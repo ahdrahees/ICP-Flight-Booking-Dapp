@@ -1,17 +1,14 @@
 import { HttpAgent, Actor } from "@dfinity/agent";
-import { idlFactory as hotelIDL } from "../../../declarations/dfinity_js_backend/dfinity_js_backend.did.js";
+import { idlFactory as flightIDL } from "../../../declarations/dfinity_js_backend/dfinity_js_backend.did.js";
 import { idlFactory as ledgerIDL } from "../../../declarations/ledger_canister/ledger_canister.did.js";
 
-const HOTEL_CANISTER_ID = "be2us-64aaa-aaaaa-qaabq-cai";
+const FLIGHT_CANISTER_ID = "aovwi-4maaa-aaaaa-qaagq-cai";
 const LEDGER_CANISTER_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai";
 const HOST = "http://localhost:4943";
 
-export async function getHotelCanister() {
-  return await getCanister(HOTEL_CANISTER_ID, hotelIDL);
-}
-
-export async function getLedgerCanister() {
-  return getCanister(LEDGER_CANISTER_ID, ledgerIDL);
+export async function getBooking() {
+  let actor = await getCanister(FLIGHT_CANISTER_ID, flightIDL);
+  await actor.getBooking()
 }
 
 async function getCanister(canisterId, idl) {

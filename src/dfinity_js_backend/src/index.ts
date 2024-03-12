@@ -36,8 +36,8 @@ const Flight = Record({
   imageUrl: text,
   description: text,
   pricePerPerson: nat64,
-  departureFrom: text,
-  arriveTo: text,
+  departureFrom: Opt(text),
+  arriveTo: Opt(text), // Update this field to Opt(text)
   departureTime: nat64,
   seats: nat64,
   isReserved: bool,
@@ -52,8 +52,8 @@ const FlightPayload = Record({
   imageUrl: text,
   description: text,
   pricePerPerson: nat64,
-  departureFrom: text, 
-  arriveTo: text,
+  departureFrom: Opt(text),
+  arriveTo: Opt(text),
   departureTime: nat64,
   seats: nat64,
 });
@@ -108,11 +108,6 @@ export default Canister({
     reservationFee = Some(payload.reservationFee);
   }),
 
-  // return rooms reservation fee
-  getFlights: query([], Vec(Flight), () => {
-    return flightsStorage.values();
-  }),
-
   // return orders
   getBookings: query([], Vec(Booking), () => {
     return persistedBookings.values();
@@ -132,37 +127,59 @@ export default Canister({
     return Ok(roomOpt.Some);
   }),
 
+  // return rooms based on price
+  getFlightByPrice: query([nat64], Result(Vec(Flight), Message), (maxPrice) => {
+    const filteredFlights = flightsStorage
+      .values()
+      .filter((flight) => flight.pricePerPerson <= maxPrice);
+    return Ok(filteredFlights);
+  }),
 
+  // return rooms based on departure and arrival places
+  getFlightByPlace: query(
+    [text, text],
+    Result(Vec(Flight), Message),
+    (departurePlace, arrivalPlace) => {
+      const filteredFlights = flightsStorage
+        .values()
+        .filter(
+          (flight) =>
+            flight.departureFrom.toLowerCase() ===
+              departurePlace.toLowerCase() &&
+            flight.arriveTo.toLowerCase() === arrivalPlace.toLowerCase()
+        );
+      return Ok(filteredFlights);
+    }
+  ),
 
-// return rooms based on price
-getFlightByPrice: query([nat64], Result(Vec(Flight), Message), (maxPrice) => {
-  const filteredFlights = flightsStorage.values().filter((flight) => flight.pricePerPerson <= maxPrice);
-  return Ok(filteredFlights);
+  // return all flights
+  // getFlights: query([], Result(Vec(Flight), Message), () => {
+  //   const flights = flightsStorage.values();
+  //   return Ok(flights);
+  // }),
+
+  
+  getFlights: query([], Result(Vec(Flight), Message), () => {
+    const flights = flightsStorage.values().map((flight) => {
+        const { departureFrom, arriveTo, ...rest } = flight;
+        return {
+            ...rest,
+            departureFrom: departureFrom ? Some(departureFrom) : None,
+            arriveTo: arriveTo ? Some(arriveTo) : None,
+        };
+    });
+    return Ok(flights);
 }),
-
-// return rooms based on departure and arrival places
-getFlightByPlace: query([text, text], Result(Vec(Flight), Message), (departurePlace, arrivalPlace) => {
-  const filteredFlights = flightsStorage.values().filter((flight) => 
-    flight.departureFrom.toLowerCase() === departurePlace.toLowerCase() &&
-    flight.arriveTo.toLowerCase() === arrivalPlace.toLowerCase()
-  );
-  return Ok(filteredFlights);
-}),
-
-
-
-
-// getAvailableSeats: query([text], Result(nat64, Message), (flightId) => {
-//   const flightOpt = flightsStorage.get(flightId);
-//   if ("None" in flightOpt) {
-//     return Err({ NotFound: `flight with id=${flightId} not found` });
-//   }
-//   const flight = flightOpt.Some;
-//   const bookedSeats = persistedBookings.values().filter((booking) => booking.flightId === flightId).reduce((total, booking) => total + booking.noOfPersons, 0);
-//   const availableSeats = flight.seats - bookedSeats;
-//   return Ok(availableSeats);
-// }),  
-
+  // getAvailableSeats: query([text], Result(nat64, Message), (flightId) => {
+  //   const flightOpt = flightsStorage.get(flightId);
+  //   if ("None" in flightOpt) {
+  //     return Err({ NotFound: `flight with id=${flightId} not found` });
+  //   }
+  //   const flight = flightOpt.Some;
+  //   const bookedSeats = persistedBookings.values().filter((booking) => booking.flightId === flightId).reduce((total, booking) => total + booking.noOfPersons, 0);
+  //   const availableSeats = flight.seats - bookedSeats;
+  //   return Ok(availableSeats);
+  // }),
 
   // add new room
   addFlight: update([FlightPayload], Result(Flight, Message), (payload) => {
